@@ -477,6 +477,12 @@
                     </div>
                 </div>
 
+                <!-- FORM PENCARIAN BARANG TERINTEGRASI -->
+                <div class="form-group" style="margin-bottom: 15px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.03);">
+                    <label for="search-item-input" style="font-size: 12px; font-weight: bold; color: var(--dark); display: block; margin-bottom: 6px;">🔍 Cari Nama Barang atau Kode QR</label>
+                    <input type="text" id="search-item-input" class="form-control" placeholder="Ketik nama barang / kode QR untuk memfilter list..." onkeyup="filterAllItemsTable()" autocomplete="off" style="padding: 11px;">
+                </div>
+
                 <div class="table-responsive">
                     <table id="all-items-table">
                         <thead>
@@ -826,6 +832,9 @@
         document.getElementById('main-dashboard-view').style.display = "none";
         document.getElementById('all-items-stock-view').style.display = "block";
 
+        // Reset kolom pencarian setiap kali membuka menu rekap
+        document.getElementById('search-item-input').value = "";
+
         renderAllItemsStockTable();
 
         if (window.innerWidth <= 950) {
@@ -885,6 +894,48 @@
             `;
             tbody.appendChild(tr);
         });
+
+        // Jalankan ulang filter jikalau ada teks tersisa di input
+        filterAllItemsTable();
+    }
+
+    // FUNGSI LOGIKA FILTER/PENCARIAN REAL-TIME
+    function filterAllItemsTable() {
+        const input = document.getElementById('search-item-input');
+        const filter = input.value.toUpperCase();
+        const table = document.getElementById('all-items-table');
+        const tr = table.getElementsByTagName('tr');
+        const emptyMsg = document.getElementById('all-items-empty-msg');
+        let visibleCount = 0;
+
+        // Loop baris tabel (lewati baris 0 karena merupakan <theader>)
+        for (let i = 1; i < tr.length; i++) {
+            const tdName = tr[i].getElementsByTagName('td')[1]; // Kolom Nama Barang
+            const tdQr = tr[i].getElementsByTagName('td')[2];   // Kolom Kode QR
+            
+            if (tdName || tdQr) {
+                const nameText = tdName.textContent || tdName.innerText;
+                const qrText = tdQr.textContent || tdQr.innerText;
+                
+                if (nameText.toUpperCase().indexOf(filter) > -1 || qrText.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                    visibleCount++;
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }
+        }
+
+        // Tampilkan pesan jika hasil pencarian kosong
+        if (visibleCount === 0 && tr.length > 1) {
+            emptyMsg.textContent = "Barang yang Anda cari tidak ditemukan.";
+            emptyMsg.style.display = "block";
+        } else if (tr.length <= 1) {
+            emptyMsg.textContent = "Tidak ada data barang terdaftar.";
+            emptyMsg.style.display = "block";
+        } else {
+            emptyMsg.style.display = "none";
+        }
     }
 
     function openModernModal(icon, title, desc, defaultValue, submitCallback) {
