@@ -99,7 +99,7 @@
 
         /* CARD & FORM */
         .form-group { margin-bottom: 12px; }
-        .form-group label { display: block; font-size: 11px; font-weight: 700; margin-bottom: 5px; color: #555; text-transform: uppercase; }
+        .form-group label { display: block; font-size: 11px; font-weight: 700; margin-bottom: 5px; color: #555; text-transform: uppercase; margin-top: 0; padding-top: 0; }
         .form-control { width: 100%; padding: 9px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; color: var(--dark); }
         .form-control:focus { outline: none; border-color: var(--secondary); box-shadow: 0 0 0 3px rgba(22, 160, 133, 0.1); }
         
@@ -535,7 +535,7 @@
         const sidebar = document.getElementById('sidebarMenu');
         const mainContent = document.getElementById('mainContent');
         const overlay = document.getElementById('sidebarOverlay');
-        if (window.innerWidth > 950) { sidebar.classList.toggle('hidden'); mainContent.classList.toggle('fullscreen'); }
+        if (window.innerWidth > 950) { sidebar.classList.toggle('hidden'); mainContent.toggle('fullscreen'); }
         else { sidebar.classList.toggle('active'); overlay.classList.toggle('active'); }
     }
 
@@ -832,7 +832,6 @@
         document.getElementById('main-dashboard-view').style.display = "none";
         document.getElementById('all-items-stock-view').style.display = "block";
 
-        // Reset kolom pencarian setiap kali membuka menu rekap
         document.getElementById('search-item-input').value = "";
 
         renderAllItemsStockTable();
@@ -895,11 +894,9 @@
             tbody.appendChild(tr);
         });
 
-        // Jalankan ulang filter jikalau ada teks tersisa di input
         filterAllItemsTable();
     }
 
-    // FUNGSI LOGIKA FILTER/PENCARIAN REAL-TIME
     function filterAllItemsTable() {
         const input = document.getElementById('search-item-input');
         const filter = input.value.toUpperCase();
@@ -908,10 +905,9 @@
         const emptyMsg = document.getElementById('all-items-empty-msg');
         let visibleCount = 0;
 
-        // Loop baris tabel (lewati baris 0 karena merupakan <theader>)
         for (let i = 1; i < tr.length; i++) {
-            const tdName = tr[i].getElementsByTagName('td')[1]; // Kolom Nama Barang
-            const tdQr = tr[i].getElementsByTagName('td')[2];   // Kolom Kode QR
+            const tdName = tr[i].getElementsByTagName('td')[1]; 
+            const tdQr = tr[i].getElementsByTagName('td')[2];   
             
             if (tdName || tdQr) {
                 const nameText = tdName.textContent || tdName.innerText;
@@ -926,7 +922,6 @@
             }
         }
 
-        // Tampilkan pesan jika hasil pencarian kosong
         if (visibleCount === 0 && tr.length > 1) {
             emptyMsg.textContent = "Barang yang Anda cari tidak ditemukan.";
             emptyMsg.style.display = "block";
@@ -963,36 +958,111 @@
         });
     }
 
-    function downloadQRCode() {
-        const itemId = activeItemId; if (!itemId) return;
-        const img = document.getElementById('qrcode-output').querySelector('img');
-        if (!img) return;
-        const a = document.createElement('a'); a.href = img.src; a.download = `QR_${itemsDbCloud[itemId].qrCode}.png`;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    // FUNGSI UTILITY UNTUK MENAMBAHKAN NAMA BARANG DAN BORDER HITAM PADA CANVAS QR
+    function generateLabeledQRCanvas(sourceElement, itemName) {
+        return new Promise((resolve) => {
+            const originCanvas = sourceElement.querySelector('canvas');
+            const originImg = sourceElement.querySelector('img');
+            
+            const processContext = (srcImgOrCanvas) => {
+                const qrSize = 300; 
+                const padding = 20;
+                const textSpace = 50; 
+                
+                const outputCanvas = document.createElement('canvas');
+                outputCanvas.width = qrSize + (padding * 2);
+                outputCanvas.height = qrSize + (padding * 2) + textSpace;
+                
+                const ctx = outputCanvas.getContext('2d');
+                
+                // 1. Gambar background putih penuh
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
+                
+                // 2. Gambar matriks utama QR Code
+                ctx.drawImage(srcImgOrCanvas, padding, padding, qrSize, qrSize);
+                
+                // 3. Tambahkan teks nama barang tepat di bawah QR
+                ctx.fillStyle = "#000000";
+                ctx.font = "bold 16px 'Segoe UI', Arial, sans-serif";
+                ctx.textAlign = "center";
+                let textY = qrSize + padding + 25;
+                ctx.fillText(itemName, outputCanvas.width / 2, textY);
+                
+                // 4. Tambahkan garis bingkai (Border) hitam pekat di bagian paling luar gambar
+                ctx.strokeStyle = "#000000";
+                ctx.lineWidth = 3; // Ketebalan border luar (pixel)
+                ctx.strokeRect(0, 0, outputCanvas.width, outputCanvas.height);
+                
+                resolve(outputCanvas);
+            };
+
+            if (originImg && originImg.src && originImg.src.startsWith('data:image')) {
+                const img = new Image();
+                img.onload = function() { processContext(img); };
+                img.src = originImg.src;
+            } else if (originCanvas) {
+                processContext(originCanvas);
+            } else {
+                resolve(null);
+            }
+        });
     }
 
+    // FUNGSI UNDUH SATUAN DENGAN INTEGRASI LABEL NAMA BARANG + BORDER
+    async function downloadQRCode() {
+        const itemId = activeItemId; 
+        if (!itemId || !itemsDbCloud[itemId]) return alert("Pilih barang terlebih dahulu!");
+        
+        const qrContainer = document.getElementById('qrcode-output');
+        const itemName = itemsDbCloud[itemId].name;
+        const filename = `QR_${itemsDbCloud[itemId].qrCode}_${itemName.replace(/[^a-z0-9]/gi, '_')}.png`;
+        
+        const labeledCanvas = await generateLabeledQRCanvas(qrContainer, itemName);
+        
+        if (labeledCanvas) {
+            const a = document.createElement('a');
+            a.href = labeledCanvas.toDataURL("image/png");
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } else {
+            alert("Gambar QR Code belum siap atau gagal dimuat. Silakan coba klik ulang barang.");
+        }
+    }
+
+    // FUNGSI UNDUH BULK ZIP DENGAN INTEGRASI LABEL NAMA BARANG + BORDER
     async function downloadAllQRCodesAsZip() {
         const itemKeys = Object.keys(itemsDbCloud);
         const validItems = itemKeys.filter(key => itemsDbCloud[key].qrCode);
         if (validItems.length === 0) return alert("Belum ada data barang!");
-        if (!confirm(`Unduh ${validItems.length} QR Code ke ZIP?`)) return;
+        if (!confirm(`Unduh ${validItems.length} QR Code beserta label & border luar ke ZIP?`)) return;
+        
         const zip = new JSZip();
         const tempContainer = document.getElementById('bulk-qr-generator-temp');
+        
         for (let key of validItems) {
             const item = itemsDbCloud[key];
             tempContainer.innerHTML = "";
-            new QRCode(tempContainer, { text: item.qrCode, width: 250, height: 250 });
+            new QRCode(tempContainer, { text: item.qrCode, width: 300, height: 300 });
+            
             await new Promise(resolve => setTimeout(resolve, 80));
-            const imgElement = tempContainer.querySelector('img');
-            if (imgElement && imgElement.src.startsWith('data:image/png;base64,')) {
-                zip.file(`QR_${item.qrCode}_${item.name.replace(/[^a-z0-9]/gi, '_')}.png`, imgElement.src.replace('data:image/png;base64,', ''), {base64: true});
+            
+            const labeledCanvas = await generateLabeledQRCanvas(tempContainer, item.name);
+            if (labeledCanvas) {
+                const dataUrl = labeledCanvas.toDataURL("image/png");
+                zip.file(`QR_${item.qrCode}_${item.name.replace(/[^a-z0-9]/gi, '_')}.png`, dataUrl.replace('data:image/png;base64,', ''), {base64: true});
             }
         }
+        
         zip.generateAsync({type: "blob"}).then(function(content) {
             const downloadLink = document.createElement('a');
             downloadLink.href = URL.createObjectURL(content);
-            downloadLink.download = `QR_CODES_CLOUD.zip`;
-            document.body.appendChild(downloadLink); downloadLink.click(); document.body.removeChild(downloadLink);
+            downloadLink.download = `QR_CODES_BORDER_LABELED.zip`;
+            document.body.appendChild(downloadLink); 
+            downloadLink.click(); 
+            document.body.removeChild(downloadLink);
         });
     }
 
