@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner Gudang - Firebase Cloud</title>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #16a085;
+            --danger: #e74c3c;
+            --dark: #34495e;
+            --white: #ffffff;
+            --light: #f4f6f9;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { background-color: var(--light); color: var(--dark); padding: 15px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+
+        .container { width: 100%; max-width: 500px; background: var(--white); padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-top: 10px; }
+        
+        header { text-align: center; margin-bottom: 20px; width: 100%; max-width: 500px; }
+        header h1 { font-size: 20px; color: var(--primary); }
+        header p { font-size: 12px; color: #7f8c8d; margin-top: 4px; }
+
+        .status-cloud { display: inline-block; padding: 4px 10px; background: #27ae60; color: white; font-size: 11px; font-weight: bold; border-radius: 20px; margin-top: 5px; }
+        .status-cloud.offline { background: var(--danger); }
+
+        .scanner-box { width: 100%; background: #000; border-radius: 8px; overflow: hidden; position: relative; margin-bottom: 15px; min-height: 250px; }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 11px; font-weight: 700; margin-bottom: 5px; color: #555; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; color: var(--dark); }
+        .form-control:focus { outline: none; border-color: var(--secondary); box-shadow: 0 0 0 3px rgba(22, 160, 133, 0.1); }
+
+        .btn { display: block; width: 100%; padding: 12px; background-color: var(--secondary); color: var(--white); border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; text-align: center; transition: background 0.2s; }
+        .btn:hover { background-color: #117a65; }
+        .btn-cancel { background-color: #7f8c8d; margin-top: 8px; }
+        .btn-cancel:hover { background-color: #626567; }
+
+        .info-barang-box { background: #ebf5fb; border-left: 5px solid #2980b9; padding: 15px; border-radius: 6px; margin-bottom: 15px; display: none; }
+        .info-barang-box h3 { font-size: 16px; color: #2c3e50; }
+        .info-barang-box p { font-size: 13px; margin-top: 5px; color: #555; }
+
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); background: #27ae60; color: white; padding: 12px 24px; border-radius: 30px; font-size: 13px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 9999; opacity: 0; transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s; text-align: center; width: 85%; max-width: 350px; }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Scanner QR OUt Gudang</h1>
+        <p>Gunakan kamera perangkat untuk memotong stok secara langsung</p>
+        <span id="cloud-indicator" class="status-cloud">MENGHUBUNGKAN CLOUD...</span>
+    </header>
+
+    <div class="container">
+        <div id="scanner-view">
+            <div class="scanner-box" id="reader-camera"></div>
+            <p style="text-align: center; font-size: 12px; color: #7f8c8d; font-style: italic;">Posisikan QR Code di dalam kotak kamera</p>
+        </div>
+
+        <div id="mutation-form-view" style="display: none;">
+            <div class="info-barang-box" id="info-barang">
+                <h3 id="target-item-name">Nama Barang</h3>
+                <p>Kode QR: <strong id="target-item-qr">-</strong> | Stok Saat Ini: <strong id="target-item-stock">0</strong></p>
+            </div>
+
+            <div class="form-group">
+                <label id="label-qty-unit">Jumlah Keluar (Qty)</label>
+                <input type="number" id="input-qty-out" class="form-control" min="" value="">
+            </div>
+
+            <div class="form-group">
+                <label>Keterangan / Alasan Keluar</label>
+                <input type="text" id="input-desc-out" class="form-control" placeholder="..." autocomplete="off">
+            </div>
+
+            <button class="btn" id="btn-submit-mutasi">Kirim & Potong Stok</button>
+            <button class="btn btn-cancel" onclick="resetKeScanner()">Batal / Scan Ulang</button>
+        </div>
+    </div>
+
+    <div id="toast-alert" class="toast">Notifikasi</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyDn9oZ-5eR89Tg4tYtTqCxuaP4MiI2m4zE",
+        authDomain: "material-check-sheet-79654.firebaseapp.com",
+        databaseURL: "https://material-check-sheet-79654-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "material-check-sheet-79654",
+        storageBucket: "material-check-sheet-79654.firebasestorage.app",
+        messagingSenderId: "794898918404",
+        appId: "1:794898918404:web:634d0290f216637890d951"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    let html5QrcodeScanner = null;
+    let itemsDbCloud = {};
+    let scannedItemId = null;
+
+    database.ref('items_db').on('value', (snapshot) => {
+        itemsDbCloud = snapshot.val() || {};
+        const indicator = document.getElementById('cloud-indicator');
+        indicator.textContent = "☁️ CLOUD TERHUBUNG (SIAP)";
+        indicator.classList.remove('offline');
+        
+        if (!html5QrcodeScanner) {
+            aktifkanKameraScanner();
+        }
+    }, (error) => {
+        const indicator = document.getElementById('cloud-indicator');
+        indicator.textContent = "🔴 CLOUD OFFLINE / ERROR";
+        indicator.classList.add('offline');
+    });
+
+    function jalankanToast(pesan, gagal = false) {
+        const toast = document.getElementById('toast-alert');
+        toast.textContent = pesan;
+        toast.style.background = gagal ? "#e74c3c" : "#27ae60";
+        toast.classList.add('show');
+        setTimeout(() => { toast.classList.remove('show'); }, 3500);
+    }
+
+    function aktifkanKameraScanner() {
+        document.getElementById('scanner-view').style.display = "block";
+        document.getElementById('mutation-form-view').style.display = "none";
+        
+        html5QrcodeScanner = new Html5Qrcode("reader-camera");
+        html5QrcodeScanner.start(
+            { facingMode: "environment" }, 
+            { fps: 12, qrbox: 250 }, 
+            onScanSuccess
+        ).catch(() => {
+            jalankanToast("Gagal membuka kamera. Izinkan akses kamera terlebih dahulu!", true);
+        });
+    }
+
+    function onScanSuccess(decodedText) {
+        let token = decodedText.trim().toUpperCase();
+        let foundId = null;
+
+        Object.keys(itemsDbCloud).forEach(key => {
+            if (itemsDbCloud[key].qrCode === token) {
+                foundId = itemsDbCloud[key].id;
+            }
+        });
+
+        if (foundId) {
+            html5QrcodeScanner.stop().then(() => {
+                bukaFormMutasi(foundId);
+            }).catch(() => {
+                bukaFormMutasi(foundId);
+            });
+        } else {
+            jalankanToast(`QR Kode "${token}" Tidak Terdaftar!`, true);
+        }
+    }
+
+    function bukaFormMutasi(itemId) {
+        scannedItemId = itemId;
+        const item = itemsDbCloud[itemId];
+        
+        let currentStock = item.initialStock;
+        if (item.mutations && item.mutations.length > 0) {
+            currentStock = item.mutations[item.mutations.length - 1].stockAkhir;
+        }
+
+        document.getElementById('target-item-name').textContent = item.name;
+        document.getElementById('target-item-qr').textContent = item.qrCode;
+        document.getElementById('target-item-stock').textContent = `${currentStock} ${item.unit || 'pcs'}`;
+        document.getElementById('label-qty-unit').textContent = `Jumlah Keluar (Qty dalam ${item.unit || 'pcs'})`;
+
+        document.getElementById('input-qty-out').value = "1";
+        document.getElementById('input-desc-out').value = "";
+
+        document.getElementById('scanner-view').style.display = "none";
+        document.getElementById('mutation-form-view').style.display = "block";
+        setTimeout(() => document.getElementById('input-qty-out').focus(), 150);
+
+        document.getElementById('btn-submit-mutasi').onclick = function() {
+            eksekusiPotongStok(itemId);
+        };
+    }
+
+    function eksekusiPotongStok(itemId) {
+        const qtyPotong = parseInt(document.getElementById('input-qty-out').value);
+        const alasanKeluar = document.getElementById('input-desc-out').value.trim() || "Dipotong lewat Scanner Web";
+
+        if (isNaN(qtyPotong) || qtyPotong <= 0) {
+            return alert("Kuantitas pengeluaran harus diisi dengan angka valid!");
+        }
+
+        const now = new Date();
+        const timestampOtomatis = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+        let currentMutations = itemsDbCloud[itemId].mutations || [];
+        currentMutations.push({ 
+            tanggal: timestampOtomatis, jenis: "OUT", ket: alasanKeluar, 
+            in: 0, out: qtyPotong, total: -qtyPotong, stockAkhir: 0 
+        });
+
+        let sortedMutations = recalculateLogic(itemsDbCloud[itemId].initialStock, currentMutations);
+
+        database.ref('items_db/' + itemId + '/mutations').set(sortedMutations)
+            .then(() => {
+                jalankanToast(`🔻 Stok ${itemsDbCloud[itemId].name} berhasil dikurangi ${qtyPotong}!`);
+                resetKeScanner();
+            })
+            .catch(err => alert("Gagal memperbarui database cloud: " + err.message));
+    }
+
+    function recalculateLogic(initialStock, mutations) {
+        let init = mutations.find(m => m.jenis === "INITIAL");
+        let others = mutations.filter(m => m.jenis !== "INITIAL").sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+        let sorted = []; 
+        if (init) { init.stockAkhir = initialStock; sorted.push(init); }
+        let runningStock = initialStock;
+        
+        others.forEach(mut => {
+            if (mut.jenis === "IN") { mut.total = mut.in; runningStock += mut.in; }
+            else if (mut.jenis === "OUT") { mut.total = -mut.out; runningStock -= mut.out; }
+            mut.stockAkhir = runningStock; 
+            sorted.push(mut);
+        });
+        return sorted;
+    }
+
+    function resetKeScanner() {
+        scannedItemId = null;
+        aktifkanKameraScanner();
+    }
+</script>
+</body>
+</html>
