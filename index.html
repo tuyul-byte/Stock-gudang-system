@@ -432,7 +432,7 @@
                 </div>
             </div>
 
-            <!-- MENU KUSTOM UPDATE DATA & SALDO AWAL (BARU) -->
+            <!-- MENU KUSTOM UPDATE DATA, SATUAN & SALDO AWAL (MENU 5) -->
             <div class="menu-grup tutup" id="grup-edit-barang">
                 <div class="menu-header" onclick="toggleMenuGrup('grup-edit-barang')">
                     <span>🛠️ 5. Menu Edit Barang & Qty</span>
@@ -448,6 +448,20 @@
                         <input type="text" id="edit-item-name" class="form-control" placeholder="Nama barang">
                     </div>
                     <div class="form-group">
+                        <label>Ubah Satuan Barang (Unit)</label>
+                        <div class="unit-group-flex">
+                            <select id="edit-item-unit-select" class="form-control" onchange="toggleEditManualUnitInput()">
+                                <option value="pcs">Pcs</option>
+                                <option value="kg">Kg</option>
+                                <option value="pack">Pack</option>
+                                <option value="roll">Roll</option>
+                                <option value="dus">Dus</option>
+                                <option value="MANUAL">Ketik Manual...</option>
+                            </select>
+                            <input type="text" id="edit-item-unit-manual" class="form-control" placeholder="Unit baru" style="display: none;">
+                        </div>
+                    </div>
+                    <div class="form-group">
                         <label>Ubah Kode QR Utama</label>
                         <input type="text" id="edit-item-qr" class="form-control" placeholder="QR Code">
                     </div>
@@ -455,6 +469,19 @@
                         <label style="color:var(--danger)">Ubah Koreksi Stok Awal (Initial)</label>
                         <input type="number" id="edit-initial-stock" class="form-control" placeholder="0">
                     </div>
+
+                    <!-- AREA KUSTOM EDIT KONFIGURASI DUS (CHILD CODES) -->
+                    <div id="edit-parent-config-area" style="display: none; background: #fff2e6; padding: 12px; border-radius: 6px; border: 1px solid #ffcc99; margin-bottom: 12px;">
+                        <label style="color:#b35c00; font-weight:bold; font-size:11px; display:block; margin-bottom:6px;">⚙️ KONFIGURASI ISI DALAM DUS</label>
+                        <div class="form-group">
+                            <label style="font-size:10px; color:#555;">Kapasitas Total Isi QR Satuan (Pcs/Roll/Pack)</label>
+                            <input type="number" id="edit-child-count" class="form-control" min="1" max="25" onchange="generateEditChildQrFields()" style="padding:5px; font-size:12px;">
+                        </div>
+                        <div id="edit-child-inputs-dynamic-container">
+                            <!-- Input list barcode eceran dimuat di sini -->
+                        </div>
+                    </div>
+
                     <button class="btn" style="background-color: #34495e;" onclick="updateItemDataAndQty()">Simpan Perubahan Data</button>
                     <button class="btn btn-danger" style="margin-top:5px; font-size:11px; padding:6px;" onclick="deleteItemPermanently()">⚠️ Hapus Barang dari Sistem</button>
                 </div>
@@ -533,7 +560,7 @@
                 </div>
             </div>
 
-            <!-- VIEW BARU: SELEKSI DAN FILTER ZIP DOWNLOAD PINTAR -->
+            <!-- VIEW SELEKSI DAN FILTER ZIP DOWNLOAD PINTAR -->
             <div id="bulk-download-selection-view" style="display: none;">
                 <div class="dashboard-header-block" style="border-left-color: var(--accent);">
                     <div class="dashboard-title-area">
@@ -629,6 +656,37 @@
         else { manualInput.style.display = "none"; }
     }
 
+    function toggleEditManualUnitInput() {
+        const selector = document.getElementById('edit-item-unit-select');
+        const manualInput = document.getElementById('edit-item-unit-manual');
+        if(selector.value === "MANUAL") { 
+            manualInput.style.display = "block"; 
+            manualInput.focus(); 
+        } else { 
+            manualInput.style.display = "none"; 
+        }
+        checkEditUnitAndTriggerView();
+    }
+
+    function checkEditUnitAndTriggerView() {
+        const selector = document.getElementById('edit-item-unit-select').value;
+        const manualInput = document.getElementById('edit-item-unit-manual').value.trim().toLowerCase();
+        const parentConfigArea = document.getElementById('edit-parent-config-area');
+        
+        if (selector === "dus" || manualInput === "dus") {
+            parentConfigArea.style.display = "block";
+            const fields = document.querySelectorAll('.edit-child-qr-field');
+            if (fields.length === 0) {
+                const targetId = document.getElementById('edit-select-item').value;
+                const existing = (targetId && itemsDbCloud[targetId]) ? (itemsDbCloud[targetId].childQrs || []) : [];
+                document.getElementById('edit-child-count').value = existing.length || 6;
+                generateEditChildQrFields(existing);
+            }
+        } else {
+            parentConfigArea.style.display = "none";
+        }
+    }
+
     function toggleParentSetupView() {
         const isParent = document.getElementById('is-parent-checkbox').checked;
         const areaChild = document.getElementById('child-qr-inputs-area');
@@ -720,7 +778,7 @@
         }
     }
 
-    /* FUNGSI MENU EDITOR BARANG BARU (MENU 5) */
+    /* FUNGSI MENU EDITOR DATA BARANG (MENU 5) */
     function renderEditorDropdown() {
         const editSelect = document.getElementById('edit-select-item');
         editSelect.innerHTML = `<option value="">-- Pilih Barang Yang Mau Di-edit --</option>`;
@@ -732,16 +790,63 @@
 
     function loadDataToEditor() {
         const targetId = document.getElementById('edit-select-item').value;
+        const parentConfigArea = document.getElementById('edit-parent-config-area');
+        
         if(!targetId || !itemsDbCloud[targetId]) {
             document.getElementById('edit-item-name').value = "";
             document.getElementById('edit-item-qr').value = "";
             document.getElementById('edit-initial-stock').value = "";
+            document.getElementById('edit-item-unit-select').value = "pcs";
+            document.getElementById('edit-item-unit-manual').value = "";
+            document.getElementById('edit-item-unit-manual').style.display = "none";
+            parentConfigArea.style.display = "none";
             return;
         }
+
         const item = itemsDbCloud[targetId];
         document.getElementById('edit-item-name').value = item.name || "";
         document.getElementById('edit-item-qr').value = item.qrCode || "";
         document.getElementById('edit-initial-stock').value = item.initialStock || 0;
+
+        // Load data satuan unit
+        const stdUnits = ["pcs", "kg", "pack", "roll", "dus"];
+        if(item.unit && stdUnits.includes(item.unit.toLowerCase())) {
+            document.getElementById('edit-item-unit-select').value = item.unit.toLowerCase();
+            document.getElementById('edit-item-unit-manual').style.display = "none";
+        } else {
+            document.getElementById('edit-item-unit-select').value = "MANUAL";
+            document.getElementById('edit-item-unit-manual').value = item.unit || "";
+            document.getElementById('edit-item-unit-manual').style.display = "block";
+        }
+
+        // KUSTOM OTOMATISASI: Jika unit berjenis 'dus' atau ditandai sebagai Parent
+        if(item.isParent || (item.unit && item.unit.toLowerCase() === "dus")) {
+            parentConfigArea.style.display = "block";
+            const currentChildQrs = item.childQrs || [];
+            document.getElementById('edit-child-count').value = currentChildQrs.length || 6;
+            generateEditChildQrFields(currentChildQrs);
+        } else {
+            parentConfigArea.style.display = "none";
+        }
+    }
+
+    function generateEditChildQrFields(existingArray = null) {
+        const container = document.getElementById('edit-child-inputs-dynamic-container');
+        container.innerHTML = "";
+        const count = parseInt(document.getElementById('edit-child-count').value) || 0;
+        const mainQr = document.getElementById('edit-item-qr').value.trim().toUpperCase();
+
+        for(let i = 0; i < count; i++) {
+            let placeholderValue = mainQr ? `${mainQr}-R${i+1}` : `QR Eceran ${i+1}`;
+            let val = "";
+            if(existingArray && existingArray[i]) {
+                val = existingArray[i];
+            }
+            container.innerHTML += `
+                <input type="text" class="form-control edit-child-qr-field" 
+                       placeholder="${placeholderValue}" value="${val}" 
+                       style="margin-bottom: 5px; font-size:12px; padding:6px; font-family:monospace;">`;
+        }
     }
 
     function updateItemDataAndQty() {
@@ -751,6 +856,10 @@
         const newName = document.getElementById('edit-item-name').value.trim();
         const newQr = document.getElementById('edit-item-qr').value.trim().toUpperCase();
         const newInitialStock = parseInt(document.getElementById('edit-initial-stock').value) || 0;
+        
+        const unitSelector = document.getElementById('edit-item-unit-select').value;
+        let finalUnit = unitSelector === "MANUAL" ? document.getElementById('edit-item-unit-manual').value.trim() : unitSelector;
+        if(!finalUnit) finalUnit = "pcs";
 
         if(!newName || !newQr) return alert("Nama barang dan QR Code tidak boleh kosong!");
 
@@ -758,8 +867,31 @@
         item.name = newName;
         item.qrCode = newQr;
         item.initialStock = newInitialStock;
+        item.unit = finalUnit.toLowerCase();
 
-        // Hitung ulang seluruh sisa stok berdasarkan saldo awal baru
+        // Otomatisasi penentuan flag parent kemasan Dus
+        if(item.unit === "dus") {
+            item.isParent = true;
+        }
+
+        // Proses penyimpanan kontainer data child/eceran
+        if(item.isParent) {
+            let updatedChildQrs = [];
+            const fields = document.querySelectorAll('.edit-child-qr-field');
+            fields.forEach((field, index) => {
+                let fVal = field.value.trim().toUpperCase();
+                if(!fVal) fVal = newQr + "-R" + (index + 1);
+                updatedChildQrs.push(fVal);
+            });
+            item.childQrs = updatedChildQrs;
+            if(item.brokenPack === undefined) item.brokenPack = false;
+        } else {
+            item.isParent = false;
+            item.childQrs = null;
+            item.brokenPack = false;
+        }
+
+        // Jalankan kalkulasi ulang BinCard
         item.mutations = recalculateLogic(item);
 
         database.ref('items_db/' + targetId).set(item)
@@ -983,35 +1115,24 @@
         document.getElementById('stat-current').textContent = (mutationsList.length > 0 ? mutationsList[mutationsList.length - 1].stockAkhir : item.initialStock) + itemUnit;
     }
 
-    /* FITUR SELEKSI DOWNLOAD BULK BERBASIS CHECKBOX (BARU) */
     function showBulkDownloadSelectionView() {
-        currentViewMode = "bulk_download";
-        activeItemId = "";
-        document.getElementById('select-item').value = "";
-
+        currentViewMode = "bulk_download"; activeItemId = ""; document.getElementById('select-item').value = "";
         document.getElementById('welcome-screen-view').style.display = "none";
         document.getElementById('main-dashboard-view').style.display = "none";
         document.getElementById('all-items-stock-view').style.display = "none";
         document.getElementById('bulk-download-selection-view').style.display = "block";
-
         buildBulkDownloadCheckboxes();
         if (window.innerWidth <= 950) toggleSidebar();
     }
 
     function buildBulkDownloadCheckboxes() {
-        const container = document.getElementById('bulk-checkboxes-container');
-        container.innerHTML = "";
+        const container = document.getElementById('bulk-checkboxes-container'); container.innerHTML = "";
         const allKeys = Object.keys(itemsDbCloud);
-
-        if(allKeys.length === 0) {
-            container.innerHTML = `<div class="empty-state">Belum ada data barang terdaftar.</div>`;
-            return;
-        }
+        if(allKeys.length === 0) { container.innerHTML = `<div class="empty-state">Belum ada data barang terdaftar.</div>`; return; }
 
         allKeys.forEach(key => {
             const item = itemsDbCloud[key];
             if(item.qrCode) {
-                // Checkbox Utama Barang (Dus / Pcs)
                 container.innerHTML += `
                     <div class="bulk-item-row">
                         <input type="checkbox" class="qr-bulk-cb" data-type="MAIN" data-itemid="${item.id}" data-value="${item.qrCode}" data-label="${item.name} (${item.qrCode})" checked>
@@ -1019,12 +1140,11 @@
                     </div>`;
             }
             if(item.isParent && item.childQrs) {
-                // Checkbox Turunan Roll Satuan
                 item.childQrs.forEach((cQr, index) => {
                     container.innerHTML += `
                         <div class="bulk-item-row" style="padding-left: 25px; background: #fdfefe;">
-                            <input type="checkbox" class="qr-bulk-cb" data-type="CHILD" data-itemid="${item.id}" data-childindex="${index}" data-value="${cQr}" data-label="${item.name} - Roll ${index+1}" checked>
-                            <label>🧵 [Roll ${index+1}] Eceran &rarr; (QR: <code>${cQr}</code>)</label>
+                            <input type="checkbox" class="qr-bulk-cb" data-type="CHILD" data-itemid="${item.id}" data-childindex="${index}" data-value="${cQr}" data-label="${item.name} - Eceran ${index+1}" checked>
+                            <label>🧵 [Isi ${index+1}] Eceran &rarr; (QR: <code>${cQr}</code>)</label>
                         </div>`;
                 });
             }
@@ -1039,7 +1159,6 @@
     async function processSelectedQRCodesToZip() {
         const checkboxes = document.querySelectorAll('.qr-bulk-cb:checked');
         if (checkboxes.length === 0) return alert("Pilih minimal satu item QR Code untuk didownload!");
-        
         if (!confirm(`Unduh ${checkboxes.length} QR Code terpilih ke dalam file ZIP?`)) return;
 
         const zip = new JSZip();
@@ -1058,7 +1177,7 @@
             let labeledCanvas = await generateLabeledQRCanvas(tempContainer, fileLabelName);
             if (labeledCanvas) {
                 let dataUrl = labeledCanvas.toDataURL("image/png");
-                let prefix = type === "MAIN" ? "QR_MAIN_" : "QR_ROLL_";
+                let prefix = type === "MAIN" ? "QR_MAIN_" : "QR_CHILD_";
                 zip.file(`${prefix}${tokenValue}.png`, dataUrl.replace('data:image/png;base64,', ''), {base64: true});
             }
         }
@@ -1067,9 +1186,7 @@
             const downloadLink = document.createElement('a');
             downloadLink.href = URL.createObjectURL(content);
             downloadLink.download = `SELEKSI_QR_CODE_GUDANG.zip`;
-            document.body.appendChild(downloadLink); 
-            downloadLink.click(); 
-            document.body.removeChild(downloadLink);
+            document.body.appendChild(downloadLink); downloadLink.click(); document.body.removeChild(downloadLink);
             showCloudToast("📥 ZIP Berhasil Terunduh!");
         });
     }
@@ -1126,14 +1243,11 @@
 
     function generateLabeledQRCanvas(sourceElement, itemName) {
         return new Promise((resolve) => {
-            const originCanvas = sourceElement.querySelector('canvas');
-            const originImg = sourceElement.querySelector('img');
+            const originCanvas = sourceElement.querySelector('canvas'); const originImg = sourceElement.querySelector('img');
             const processContext = (srcImgOrCanvas) => {
-                const qrSize = 300, padding = 20, textSpace = 50;
-                const outputCanvas = document.createElement('canvas');
+                const qrSize = 300, padding = 20, textSpace = 50; const outputCanvas = document.createElement('canvas');
                 outputCanvas.width = qrSize + (padding * 2); outputCanvas.height = qrSize + (padding * 2) + textSpace;
-                const ctx = outputCanvas.getContext('2d');
-                ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
+                const ctx = outputCanvas.getContext('2d'); ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
                 ctx.drawImage(srcImgOrCanvas, padding, padding, qrSize, qrSize);
                 ctx.fillStyle = "#000000"; ctx.font = "bold 15px 'Segoe UI', Arial, sans-serif"; ctx.textAlign = "center";
                 ctx.fillText(itemName, outputCanvas.width / 2, qrSize + padding + 25);
@@ -1157,8 +1271,7 @@
     }
 
     function startScanner() {
-        document.getElementById('qr-modal').classList.add('active');
-        html5QrcodeScanner = new Html5Qrcode("reader");
+        document.getElementById('qr-modal').classList.add('active'); html5QrcodeScanner = new Html5Qrcode("reader");
         html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 220 }, onScanSuccess).catch(stopScanner);
     }
     function stopScanner() {
@@ -1183,4 +1296,4 @@
     }
 </script>
 </body>
-</html> 
+</html>
