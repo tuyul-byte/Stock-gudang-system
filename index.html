@@ -99,7 +99,7 @@
 
         /* CARD & FORM */
         .form-group { margin-bottom: 12px; }
-        .form-group label { display: block; font-size: 11px; font-weight: 700; margin-bottom: 5px; color: #555; text-transform: uppercase; margin-top: 0; padding-top: 0; }
+        .form-group label { display: block; font-size: 11px; font-weight: 700; margin-bottom: 5px; color: #555; text-transform: uppercase; }
         .form-control { width: 100%; padding: 9px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; color: var(--dark); }
         .form-control:focus { outline: none; border-color: var(--secondary); box-shadow: 0 0 0 3px rgba(22, 160, 133, 0.1); }
         
@@ -112,13 +112,15 @@
         .btn {
             display: inline-block; width: 100%; padding: 10px; background-color: var(--secondary);
             color: var(--white); border: none; border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer; text-align: center;
-            transition: background 0.2s;
+            transition: background 0.2s; margin-bottom: 5px;
         }
         .btn:hover { background-color: #117a65; }
         .btn-primary { background-color: var(--primary); }
         .btn-primary:hover { background-color: #1a252f; }
         .btn-accent { background-color: var(--accent); margin-bottom: 8px; font-size: 12px; padding: 8px; color: #fff; border: none; border-radius: 4px; width: 100%; cursor: pointer; font-weight: bold;}
         .btn-accent:hover { background-color: #1f618d; }
+        .btn-danger { background-color: var(--danger); }
+        .btn-danger:hover { background-color: #c0392b; }
         
         .btn-download {
             background-color: #27ae60; color: white; font-size: 10px; padding: 4px 8px;
@@ -203,9 +205,14 @@
         tr:nth-child(even) td { background-color: #fcfdfe; }
         tr:hover td { background-color: #f1f5f9; }
 
-        /* KUSTOMISASI KHUSUS TABEL RIWAYAT SEMUA BARANG (PENGECILAN OPTIMAL) */
         #all-items-table { font-size: 11.5px; width: 100%; min-width: 100%; table-layout: fixed; }
         #all-items-table th, #all-items-table td { padding: 6px 8px; word-wrap: break-word; }
+
+        /* KUSTOM LAYOUT SELEKSI BULK DOWNLOAD */
+        .bulk-download-list-wrapper { max-height: 250px; overflow-y: auto; border: 1px solid #ddd; padding: 8px; border-radius: 6px; background: #fafafa; }
+        .bulk-item-row { display: flex; align-items: flex-start; gap: 8px; padding: 6px 4px; border-bottom: 1px dashed #eee; font-size: 12px; }
+        .bulk-item-row:last-child { border-bottom: none; }
+        .bulk-item-row input[type="checkbox"] { transform: scale(1.1); margin-top: 2px; cursor: pointer; }
 
         .badge { display: inline-block; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; }
         .badge-in { background-color: rgba(46, 204, 113, 0.15); color: #27ae60; }
@@ -237,6 +244,7 @@
         <span id="toast-message">Mencoba terhubung...</span>
     </div>
 
+    <!-- MODAL POPUP INPUTAN KUSTOM -->
     <div id="modern-input-modal" class="modern-modal-overlay">
         <div class="modern-modal-content">
             <div class="modern-modal-header">
@@ -256,6 +264,7 @@
         </div>
     </div>
 
+    <!-- MODAL PENGURANGAN OUT VIA SCAN -->
     <div id="qr-mutation-modal" class="modern-modal-overlay">
         <div class="modern-modal-content">
             <div class="modern-modal-header">
@@ -282,6 +291,7 @@
         </div>
     </div>
 
+    <!-- MODAL KAMERA SCANNER -->
     <div id="qr-modal" class="modern-modal-overlay">
         <div class="modern-modal-content" style="max-width: 450px;">
             <div class="modern-modal-header">
@@ -373,7 +383,7 @@
                 <div class="menu-konten">
                     <div class="form-group">
                         <label>Nama Barang Baru</label>
-                        <input type="text" id="new-item-name" class="form-control" placeholder="...">
+                        <input type="text" id="new-item-name" class="form-control" placeholder="Cth: Item X (Dus)">
                     </div>
                     
                     <div class="form-group">
@@ -384,37 +394,85 @@
                                 <option value="kg">Kg</option>
                                 <option value="pack">Pack</option>
                                 <option value="roll">Roll</option>
+                                <option value="dus">Dus</option>
                                 <option value="MANUAL">Ketik Manual...</option>
                             </select>
                             <input type="text" id="new-item-unit-manual" class="form-control" placeholder="Ketik unit baru (cth: Dus, Roll)" style="display: none;">
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label>Kode QR Code / Barcode</label>
-                        <input type="text" id="new-item-qr" class="form-control" placeholder="...">
+                    <div class="form-group" style="background: #fdf2e9; padding: 8px; border-radius: 4px; border: 1px solid #f5cba7; margin-bottom: 10px;">
+                        <label style="color: #a04000; font-weight: bold;">⚙️ KONFIGURASI DUS/ROLL (6 ROLL)</label>
+                        <div style="display: flex; gap: 10px; align-items: center; margin-top: 4px;">
+                            <input type="checkbox" id="is-parent-checkbox" onchange="toggleParentSetupView()" style="transform: scale(1.2);"> 
+                            <span style="font-size: 11.5px; color:#555;">Ini Kemasan Dus (Otomatis isi 6 Roll)</span>
+                        </div>
                     </div>
+
+                    <div class="form-group">
+                        <label id="qr-field-label">Kode QR Code / Barcode (Dus)</label>
+                        <input type="text" id="new-item-qr" class="form-control" placeholder="Kosongkan jika ingin dibuat otomatis">
+                    </div>
+
+                    <div id="child-qr-inputs-area" style="display: none; background: #f4f6f9; padding: 10px; border-radius: 6px; margin-bottom: 12px; border: 1px solid #ccc;">
+                        <label style="color:var(--primary); font-size:10.5px; margin-bottom:6px;">Masukan 6 Kode QR Satuan Roll di dalamnya:</label>
+                        <input type="text" id="child-qr-1" class="form-control" placeholder="QR Roll 1" style="margin-bottom: 5px; font-size:12px; padding:6px;">
+                        <input type="text" id="child-qr-2" class="form-control" placeholder="QR Roll 2" style="margin-bottom: 5px; font-size:12px; padding:6px;">
+                        <input type="text" id="child-qr-3" class="form-control" placeholder="QR Roll 3" style="margin-bottom: 5px; font-size:12px; padding:6px;">
+                        <input type="text" id="child-qr-4" class="form-control" placeholder="QR Roll 4" style="margin-bottom: 5px; font-size:12px; padding:6px;">
+                        <input type="text" id="child-qr-5" class="form-control" placeholder="QR Roll 5" style="margin-bottom: 5px; font-size:12px; padding:6px;">
+                        <input type="text" id="child-qr-6" class="form-control" placeholder="QR Roll 6" style="font-size:12px; padding:6px;">
+                    </div>
+
                     <div class="form-group">
                         <label>Stock Awal</label>
-                        <input type="number" id="initial-stock" class="form-control" value="" min="">
+                        <input type="number" id="initial-stock" class="form-control" value="0" min="0">
                     </div>
                     <button class="btn btn-primary" onclick="addNewItem()">Simpan Barang Baru</button>
                 </div>
             </div>
 
-            <div class="menu-grup tutup" id="grup-download">
-                <div class="menu-header" onclick="toggleMenuGrup('grup-download')">
-                    <span>📥 5. Bulk Ekspor Alat</span>
+            <!-- MENU KUSTOM UPDATE DATA & SALDO AWAL (BARU) -->
+            <div class="menu-grup tutup" id="grup-edit-barang">
+                <div class="menu-header" onclick="toggleMenuGrup('grup-edit-barang')">
+                    <span>🛠️ 5. Menu Edit Barang & Qty</span>
                     <span class="icon-panah">▼</span>
                 </div>
                 <div class="menu-konten">
-                    <button class="btn-bulk-download" onclick="downloadAllQRCodesAsZip()">📥 DOWNLOAD SEMUA QR CODE (ZIP)</button>
+                    <div class="form-group">
+                        <label>Pilih Barang yang Mau Diubah</label>
+                        <select id="edit-select-item" class="form-control" onchange="loadDataToEditor()"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Ubah Nama Barang</label>
+                        <input type="text" id="edit-item-name" class="form-control" placeholder="Nama barang">
+                    </div>
+                    <div class="form-group">
+                        <label>Ubah Kode QR Utama</label>
+                        <input type="text" id="edit-item-qr" class="form-control" placeholder="QR Code">
+                    </div>
+                    <div class="form-group">
+                        <label style="color:var(--danger)">Ubah Koreksi Stok Awal (Initial)</label>
+                        <input type="number" id="edit-initial-stock" class="form-control" placeholder="0">
+                    </div>
+                    <button class="btn" style="background-color: #34495e;" onclick="updateItemDataAndQty()">Simpan Perubahan Data</button>
+                    <button class="btn btn-danger" style="margin-top:5px; font-size:11px; padding:6px;" onclick="deleteItemPermanently()">⚠️ Hapus Barang dari Sistem</button>
+                </div>
+            </div>
+
+            <div class="menu-grup tutup" id="grup-download">
+                <div class="menu-header" onclick="toggleMenuGrup('grup-download')">
+                    <span>📥 6. Seleksi & Bulk Download QR</span>
+                    <span class="icon-panah">▼</span>
+                </div>
+                <div class="menu-konten">
+                    <button class="btn" onclick="showBulkDownloadSelectionView()" style="background-color: var(--accent);">🎯 Buka Seleksi Filter QR</button>
                 </div>
             </div>
 
             <div class="menu-grup tutup" id="grup-riwayat-stok">
                 <div class="menu-header" onclick="toggleMenuGrup('grup-riwayat-stok')">
-                    <span>📊 6. Riwayat Stok Semua Barang</span>
+                    <span>📊 7. Riwayat Stok Semua Barang</span>
                     <span class="icon-panah">▼</span>
                 </div>
                 <div class="menu-konten">
@@ -437,6 +495,7 @@
                     <div class="dashboard-title-area">
                         <label>KARTU KENDALI STOK AKTIF (BIN CARD)</label>
                         <h2 id="viewing-item-title">- Belum Ada Barang Terpilih -</h2>
+                        <div id="parent-child-info-badge" style="margin-top:5px;"></div>
                     </div>
                     <div class="qr-display-card" id="qr-container-box" style="display:none;">
                         <div id="qrcode-output"></div>
@@ -474,6 +533,28 @@
                 </div>
             </div>
 
+            <!-- VIEW BARU: SELEKSI DAN FILTER ZIP DOWNLOAD PINTAR -->
+            <div id="bulk-download-selection-view" style="display: none;">
+                <div class="dashboard-header-block" style="border-left-color: var(--accent);">
+                    <div class="dashboard-title-area">
+                        <label>FITUR SELEKSI EKSPOR QR CODE</label>
+                        <h2>Pilih QR Code Spesifik yang Ingin Diekspor</h2>
+                    </div>
+                </div>
+                <div style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.03);">
+                    <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+                        <button class="btn btn-primary" style="width:auto; padding:6px 12px; font-size:12px;" onclick="toggleSelectAllBulkCheckboxes(true)">Centang Semua</button>
+                        <button class="btn btn-secondary" style="width:auto; padding:6px 12px; font-size:12px;" onclick="toggleSelectAllBulkCheckboxes(false)">Hapus Semua Centang</button>
+                    </div>
+                    
+                    <div class="bulk-download-list-wrapper" id="bulk-checkboxes-container">
+                        <!-- List Checkbox Di-inject lewat JavaScript -->
+                    </div>
+
+                    <button class="btn-bulk-download" style="margin-top:15px; padding:12px;" onclick="processSelectedQRCodesToZip()">⚡ UNDUH KODE QR TERPILIH KE ZIP</button>
+                </div>
+            </div>
+
             <div id="all-items-stock-view" style="display: none;">
                 <div class="dashboard-header-block" style="border-left-color: var(--primary);">
                     <div class="dashboard-title-area">
@@ -482,7 +563,6 @@
                     </div>
                 </div>
 
-                <!-- FORM PENCARIAN BARANG TERINTEGRASI -->
                 <div class="form-group" style="margin-bottom: 15px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.03);">
                     <label for="search-item-input" style="font-size: 12px; font-weight: bold; color: var(--dark); display: block; margin-bottom: 6px;">🔍 Cari Nama Barang atau Kode QR</label>
                     <input type="text" id="search-item-input" class="form-control" placeholder="Ketik nama barang / kode QR untuk memfilter list..." onkeyup="filterAllItemsTable()" autocomplete="off" style="padding: 11px;">
@@ -545,11 +625,24 @@
     function toggleManualUnitInput() {
         const selector = document.getElementById('new-item-unit-select');
         const manualInput = document.getElementById('new-item-unit-manual');
-        if(selector.value === "MANUAL") {
-            manualInput.style.display = "block";
-            manualInput.focus();
+        if(selector.value === "MANUAL") { manualInput.style.display = "block"; manualInput.focus(); } 
+        else { manualInput.style.display = "none"; }
+    }
+
+    function toggleParentSetupView() {
+        const isParent = document.getElementById('is-parent-checkbox').checked;
+        const areaChild = document.getElementById('child-qr-inputs-area');
+        const labelQr = document.getElementById('qr-field-label');
+        const unitSelect = document.getElementById('new-item-unit-select');
+        
+        if(isParent) {
+            areaChild.style.display = "block";
+            labelQr.textContent = "Kode QR Code / Barcode Utama (Dus)";
+            unitSelect.value = "dus";
         } else {
-            manualInput.style.display = "none";
+            areaChild.style.display = "none";
+            labelQr.textContent = "Kode QR Code / Barcode";
+            unitSelect.value = "pcs";
         }
     }
 
@@ -560,10 +653,11 @@
         const data = snapshot.val();
         itemsDbCloud = data || {};
         
-        if (!activeItemId && currentViewMode !== "all_items") {
+        if (!activeItemId && currentViewMode !== "all_items" && currentViewMode !== "bulk_download") {
             document.getElementById('welcome-screen-view').style.display = "flex";
             document.getElementById('main-dashboard-view').style.display = "none";
             document.getElementById('all-items-stock-view').style.display = "none";
+            document.getElementById('bulk-download-selection-view').style.display = "none";
             document.getElementById('loading-msg').innerText = "Sistem cloud berhasil disinkronisasi. Silakan pilih nama barang atau scan kode QR untuk mengontrol data.";
             document.getElementById('welcome-hint-box').innerText = "👈 Silakan klik Menu 1 lalu pilih barang sesuai kebutuhan.";
         }
@@ -574,9 +668,12 @@
         }
 
         renderItemsDropdown();
+        renderEditorDropdown();
         
         if (currentViewMode === "all_items") {
             renderAllItemsStockTable();
+        } else if (currentViewMode === "bulk_download") {
+            buildBulkDownloadCheckboxes();
         } else if (activeItemId) {
             loadBinCard();
         }
@@ -588,7 +685,7 @@
         const toast = document.getElementById('cloud-toast');
         const toastMsg = document.getElementById('toast-message');
         toastMsg.innerText = message;
-        toast.style.background = (message.includes("Gagal") || message.includes("🔴")) ? "#e74c3c" : "#27ae60";
+        toast.style.background = (message.includes("Gagal") || message.includes("🔴") || message.includes("Peringatan")) ? "#e74c3c" : "#27ae60";
         toast.classList.add('show');
         setTimeout(() => { toast.classList.remove('show'); }, 4000);
     }
@@ -596,17 +693,13 @@
     function renderItemsDropdown() {
         const itemSelect = document.getElementById('select-item'); 
         itemSelect.innerHTML = "";
-        
         let allKeys = Object.keys(itemsDbCloud);
-
         if (allKeys.length === 0) {
             itemSelect.innerHTML = `<option value="">-- Belum ada data barang --</option>`;
             activeItemId = ""; 
             return;
         }
-
         itemSelect.innerHTML = `<option value="">-- Pilih Barang Sesuai Kebutuhan --</option>`;
-
         allKeys.forEach(key => {
             const item = itemsDbCloud[key];
             const unitSuffix = item.unit ? ` (${item.unit})` : '';
@@ -617,22 +710,85 @@
     function selectItemChange() { 
         currentViewMode = "dashboard";
         document.getElementById('all-items-stock-view').style.display = "none";
+        document.getElementById('bulk-download-selection-view').style.display = "none";
         
         activeItemId = document.getElementById('select-item').value; 
         loadBinCard(); 
 
         if (window.innerWidth <= 950 && activeItemId !== "") {
-            const sidebar = document.getElementById('sidebarMenu');
-            const overlay = document.getElementById('sidebarOverlay');
-            sidebar.classList.remove('active');
-            overlay.classList.remove('active');
+            toggleSidebar();
         }
+    }
+
+    /* FUNGSI MENU EDITOR BARANG BARU (MENU 5) */
+    function renderEditorDropdown() {
+        const editSelect = document.getElementById('edit-select-item');
+        editSelect.innerHTML = `<option value="">-- Pilih Barang Yang Mau Di-edit --</option>`;
+        Object.keys(itemsDbCloud).forEach(key => {
+            const item = itemsDbCloud[key];
+            editSelect.innerHTML += `<option value="${item.id}">${item.name} [${item.qrCode || ''}]</option>`;
+        });
+    }
+
+    function loadDataToEditor() {
+        const targetId = document.getElementById('edit-select-item').value;
+        if(!targetId || !itemsDbCloud[targetId]) {
+            document.getElementById('edit-item-name').value = "";
+            document.getElementById('edit-item-qr').value = "";
+            document.getElementById('edit-initial-stock').value = "";
+            return;
+        }
+        const item = itemsDbCloud[targetId];
+        document.getElementById('edit-item-name').value = item.name || "";
+        document.getElementById('edit-item-qr').value = item.qrCode || "";
+        document.getElementById('edit-initial-stock').value = item.initialStock || 0;
+    }
+
+    function updateItemDataAndQty() {
+        const targetId = document.getElementById('edit-select-item').value;
+        if(!targetId) return alert("Pilih barang yang mau diedit terlebih dahulu!");
+
+        const newName = document.getElementById('edit-item-name').value.trim();
+        const newQr = document.getElementById('edit-item-qr').value.trim().toUpperCase();
+        const newInitialStock = parseInt(document.getElementById('edit-initial-stock').value) || 0;
+
+        if(!newName || !newQr) return alert("Nama barang dan QR Code tidak boleh kosong!");
+
+        let item = itemsDbCloud[targetId];
+        item.name = newName;
+        item.qrCode = newQr;
+        item.initialStock = newInitialStock;
+
+        // Hitung ulang seluruh sisa stok berdasarkan saldo awal baru
+        item.mutations = recalculateLogic(item);
+
+        database.ref('items_db/' + targetId).set(item)
+            .then(() => {
+                showCloudToast("🛠️ Data Barang & Qty Berhasil Diperbarui!");
+                if(activeItemId === targetId) loadBinCard();
+            })
+            .catch(err => alert("Gagal memperbarui database: " + err.message));
+    }
+
+    function deleteItemPermanently() {
+        const targetId = document.getElementById('edit-select-item').value;
+        if(!targetId) return alert("Pilih barang yang mau dihapus!");
+        if(!confirm(`⚠️ PERINGATAN KERAS!\nApakah Anda yakin ingin menghapus barang "${itemsDbCloud[targetId].name}" selamanya dari Cloud Database? Tindakan ini menghapus seluruh riwayat bincard.`)) return;
+
+        database.ref('items_db/' + targetId).remove()
+            .then(() => {
+                showCloudToast("🗑️ Barang Telah Dihapus Selamanya!");
+                activeItemId = "";
+                loadDataToEditor();
+            })
+            .catch(err => alert(err.message));
     }
 
     function addNewItem() {
         const name = document.getElementById('new-item-name').value.trim();
         let qr = document.getElementById('new-item-qr').value.trim() || ("QR" + Date.now().toString().slice(-5));
         const stock = parseInt(document.getElementById('initial-stock').value) || 0;
+        const isParent = document.getElementById('is-parent-checkbox').checked;
         
         const unitSelector = document.getElementById('new-item-unit-select').value;
         let finalUnit = unitSelector === "MANUAL" ? document.getElementById('new-item-unit-manual').value.trim() : unitSelector;
@@ -645,16 +801,27 @@
         const timeStr = String(now.getHours()).padStart(2, '0') + ":" + String(now.getMinutes()).padStart(2, '0') + ":" + String(now.getSeconds()).padStart(2, '0');
         const fullDateTimeStr = document.getElementById('mutation-date').value + " " + timeStr;
 
+        let childQrsArray = [];
+        if(isParent) {
+            for(let i=1; i<=6; i++) {
+                let cVal = document.getElementById(`child-qr-${i}`).value.trim().toUpperCase();
+                if(!cVal) cVal = qr.toUpperCase() + "-R" + i; 
+                childQrsArray.push(cVal);
+            }
+        }
+
         const newItemData = {
             id: id, name: name, category: "UMUM", qrCode: qr.toUpperCase(), initialStock: stock, unit: finalUnit.toLowerCase(),
+            isParent: isParent, childQrs: isParent ? childQrsArray : null, brokenPack: false, 
             mutations: [{ 
-                tanggal: fullDateTimeStr, jenis: "INITIAL", ket: "Saldo Awal Registrasi", 
+                tanggal: fullDateTimeStr, jenis: "INITIAL", ket: "Saldo Awal Registrasi" + (isParent ? " (Paket Dus)" : ""), 
                 in: 0, out: 0, total: 0, stockAkhir: stock 
             }]
         };
 
         currentViewMode = "dashboard";
         document.getElementById('all-items-stock-view').style.display = "none";
+        document.getElementById('bulk-download-selection-view').style.display = "none";
         activeItemId = id; 
 
         database.ref('items_db/' + id).set(newItemData)
@@ -666,23 +833,18 @@
                 document.getElementById('new-item-unit-select').value = "pcs";
                 document.getElementById('new-item-unit-manual').value = "";
                 document.getElementById('new-item-unit-manual').style.display = "none";
-                
-                if (window.innerWidth <= 950) {
-                    document.getElementById('sidebarMenu').classList.remove('active');
-                    document.getElementById('sidebarOverlay').classList.remove('active');
-                }
+                document.getElementById('is-parent-checkbox').checked = false;
+                toggleParentSetupView();
+                if (window.innerWidth <= 950) toggleSidebar();
             })
             .catch(err => alert("Gagal menyimpan ke cloud: " + err.message));
     }
 
     function addMutation() {
-        const itemId = activeItemId; 
-        if (!itemId) return alert("Pilih barang terlebih dahulu di Menu 1!");
-        
+        const itemId = activeItemId; if (!itemId) return alert("Pilih barang terlebih dahulu di Menu 1!");
         const qty = parseInt(document.getElementById('mutation-qty').value) || 0;
         const dateInput = document.getElementById('mutation-date').value;
         const desc = document.getElementById('mutation-desc').value.trim() || "Input Manual Masuk";
-        
         if (qty <= 0 || !dateInput) return alert("Jumlah / Tanggal tidak valid!");
 
         const now = new Date();
@@ -690,61 +852,58 @@
         const dateTimeStr = dateInput + " " + timeStr;
 
         let currentMutations = itemsDbCloud[itemId].mutations || [];
-        currentMutations.push({ 
-            tanggal: dateTimeStr, jenis: "IN", ket: desc, 
-            in: qty, out: 0, total: 0, stockAkhir: 0 
-        });
+        currentMutations.push({ tanggal: dateTimeStr, jenis: "IN", ket: desc, in: qty, out: 0, total: 0, stockAkhir: 0 });
 
-        let itemClone = { ...itemsDbCloud[itemId], mutations: currentMutations };
-        let recalculatedMutations = recalculateLogic(itemClone);
+        let updates = {};
+        updates['items_db/' + itemId + '/mutations'] = recalculateLogic({ ...itemsDbCloud[itemId], mutations: currentMutations });
+        if(itemsDbCloud[itemId].isParent && qty > 0) updates['items_db/' + itemId + '/brokenPack'] = false;
 
-        database.ref('items_db/' + itemId + '/mutations').set(recalculatedMutations)
-            .then(() => {
-                showCloudToast("📥 Barang Masuk Berhasil Diposting!");
-                document.getElementById('mutation-qty').value = "1"; 
-                document.getElementById('mutation-desc').value = "";
-            })
+        database.ref().update(updates)
+            .then(() => { showCloudToast("📥 Barang Masuk Berhasil Diposting!"); document.getElementById('mutation-qty').value = ""; document.getElementById('mutation-desc').value = ""; })
             .catch(err => alert(err.message));
     }
 
-    function openQrMutationPopup(itemId) {
+    function openQrMutationPopup(itemId, isChildScan = false, childQrToken = "") {
         const item = itemsDbCloud[itemId];
-        document.getElementById('qr-mut-desc').textContent = `Barang Terdeteksi: ${item.name}`;
-        document.getElementById('qr-mut-qty-label').textContent = `Out (Qty dalam ${item.unit || 'pcs'})`;
-        document.getElementById('qr-mut-qty-input').value = "1";
-        document.getElementById('qr-mut-desc-input').value = "";
+        let infoDesc = `Barang Terdeteksi: ${item.name}`;
+        if(isChildScan) infoDesc += `\n(⚠️ Pemindaian Eceran Roll: ${childQrToken})`;
+
+        document.getElementById('qr-mut-desc').innerText = infoDesc;
+        document.getElementById('qr-mut-qty-label').textContent = isChildScan ? `Out (Eceran Roll)` : `Out (Qty dalam ${item.unit || 'pcs'})`;
         
+        document.getElementById('qr-mut-qty-input').value = "1";
+        document.getElementById('qr-mut-qty-input').disabled = isChildScan; 
+        document.getElementById('qr-mut-desc-input').value = "";
         document.getElementById('qr-mutation-modal').classList.add('active');
-        setTimeout(() => document.getElementById('qr-mut-qty-input').focus(), 100);
+        setTimeout(() => document.getElementById('qr-mut-desc-input').focus(), 100);
 
         document.getElementById('qr-mut-submit-btn').onclick = function() {
-            const qtyPotong = parseInt(document.getElementById('qr-mut-qty-input').value);
-            const alasanKeluar = document.getElementById('qr-mut-desc-input').value.trim() || "Scan QR (Keterangan kosong)";
+            const qtyPotong = isChildScan ? 1 : parseInt(document.getElementById('qr-mut-qty-input').value);
+            const alasanKeluar = document.getElementById('qr-mut-desc-input').value.trim() || (isChildScan ? `Scan Eceran Roll [${childQrToken}]` : "Scan QR Out");
             if(isNaN(qtyPotong) || qtyPotong <= 0) return alert("Kuantitas harus diisi valid!");
-            prosesPotongStokQR(itemId, qtyPotong, alasanKeluar);
+            prosesPotongStokQR(itemId, qtyPotong, alasanKeluar, isChildScan, childQrToken);
         };
     }
 
     function closeQrMutationModal() { document.getElementById('qr-mutation-modal').classList.remove('active'); }
 
-    function prosesPotongStokQR(itemId, qtyPotong, alasanKeluar) {
+    function prosesPotongStokQR(itemId, qtyPotong, alasanKeluar, isChildScan = false, childQrToken = "") {
         const now = new Date();
         const timestampOtomatis = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+        const item = itemsDbCloud[itemId];
 
-        let currentMutations = itemsDbCloud[itemId].mutations || [];
-        currentMutations.push({ 
-            tanggal: timestampOtomatis, jenis: "OUT", ket: alasanKeluar, 
-            in: 0, out: qtyPotong, total: 0, stockAkhir: 0 
-        });
+        let currentMutations = item.mutations || [];
+        let finalQtyOut = isChildScan ? 1 : qtyPotong;
+        let finalKetLog = isChildScan ? `${alasanKeluar} (Dus Terbuka / Broken Pack)` : alasanKeluar;
 
-        let itemClone = { ...itemsDbCloud[itemId], mutations: currentMutations };
-        let recalculatedMutations = recalculateLogic(itemClone);
+        currentMutations.push({ tanggal: timestampOtomatis, jenis: "OUT", ket: finalKetLog, in: 0, out: finalQtyOut, total: 0, stockAkhir: 0 });
 
-        database.ref('items_db/' + itemId + '/mutations').set(recalculatedMutations)
-            .then(() => {
-                showCloudToast(`🔻 Stok berhasil dikurangi ${qtyPotong} ${itemsDbCloud[itemId].unit || 'pcs'}!`);
-                closeQrMutationModal();
-            })
+        let updates = {};
+        updates['items_db/' + itemId + '/mutations'] = recalculateLogic({ ...item, mutations: currentMutations });
+        if (isChildScan && item.isParent) updates['items_db/' + itemId + '/brokenPack'] = true;
+
+        database.ref().update(updates)
+            .then(() => { showCloudToast(`🔻 Stok berhasil dikurangi ${finalQtyOut} ${item.unit || 'pcs'}!`); closeQrMutationModal(); })
             .catch(err => alert(err.message));
     }
 
@@ -767,32 +926,32 @@
 
     function loadBinCard() {
         const itemId = activeItemId;
-        const welcomeScreen = document.getElementById('welcome-screen-view');
-        const mainDashboard = document.getElementById('main-dashboard-view');
+        if (!itemId || !itemsDbCloud[itemId]) return;
         
-        if (!itemId || !itemsDbCloud[itemId]) { 
-            welcomeScreen.style.display = "flex"; 
-            mainDashboard.style.display = "none"; 
-            return; 
-        }
-        
-        welcomeScreen.style.display = "none"; 
-        mainDashboard.style.display = "block";
+        document.getElementById('welcome-screen-view').style.display = "none"; 
+        document.getElementById('all-items-stock-view').style.display = "none";
+        document.getElementById('bulk-download-selection-view').style.display = "none";
+        document.getElementById('main-dashboard-view').style.display = "block";
         
         const item = itemsDbCloud[itemId];
         const itemUnit = item.unit ? ` ${item.unit}` : '';
-        const tbody = document.getElementById('bincard-tbody'); 
-        tbody.innerHTML = "";
+        const tbody = document.getElementById('bincard-tbody'); tbody.innerHTML = "";
         document.getElementById('viewing-item-title').textContent = `${item.name}`;
+
+        const badgeArea = document.getElementById('parent-child-info-badge');
+        badgeArea.innerHTML = "";
+        if(item.isParent) {
+            badgeArea.innerHTML = item.brokenPack ? 
+                `<span class="badge" style="background:#f5b041; color:#fff; font-size:11px; padding:4px 8px;">⚠️ DUS TERBUKA (BROKEN PACK)</span>` : 
+                `<span class="badge" style="background:#2ecc71; color:#fff; font-size:11px; padding:4px 8px;">📦 DUS UTUH (FULL PACK)</span>`;
+        }
 
         if(item.qrCode) {
             document.getElementById('qr-container-box').style.display = "flex"; 
             document.getElementById("qrcode-output").innerHTML = "";
             new QRCode(document.getElementById("qrcode-output"), { text: item.qrCode, width: 90, height: 90 });
             document.getElementById('qrcode-label-text').textContent = item.qrCode;
-        } else { 
-            document.getElementById('qr-container-box').style.display = "none"; 
-        }
+        } else { document.getElementById('qr-container-box').style.display = "none"; }
 
         let totalIn = 0, totalOut = 0;
         let mutationsList = item.mutations || [];
@@ -803,9 +962,7 @@
             if(mut.tanggal.includes(" ")) {
                 const parts = mut.tanggal.split(" ");
                 displayDate = parts[0].split('-').reverse().join('/') + " " + parts[1];
-            } else {
-                displayDate = mut.tanggal.split('-').reverse().join('/');
-            }
+            } else { displayDate = mut.tanggal.split('-').reverse().join('/'); }
 
             let tr = document.createElement('tr');
             tr.innerHTML = `
@@ -826,71 +983,126 @@
         document.getElementById('stat-current').textContent = (mutationsList.length > 0 ? mutationsList[mutationsList.length - 1].stockAkhir : item.initialStock) + itemUnit;
     }
 
-    function showAllItemsStockView() {
-        currentViewMode = "all_items";
-        activeItemId = ""; 
-        document.getElementById('select-item').value = ""; 
+    /* FITUR SELEKSI DOWNLOAD BULK BERBASIS CHECKBOX (BARU) */
+    function showBulkDownloadSelectionView() {
+        currentViewMode = "bulk_download";
+        activeItemId = "";
+        document.getElementById('select-item').value = "";
 
         document.getElementById('welcome-screen-view').style.display = "none";
         document.getElementById('main-dashboard-view').style.display = "none";
-        document.getElementById('all-items-stock-view').style.display = "block";
+        document.getElementById('all-items-stock-view').style.display = "none";
+        document.getElementById('bulk-download-selection-view').style.display = "block";
 
-        document.getElementById('search-item-input').value = "";
-
-        renderAllItemsStockTable();
-
-        if (window.innerWidth <= 950) {
-            const sidebar = document.getElementById('sidebarMenu');
-            const overlay = document.getElementById('sidebarOverlay');
-            sidebar.classList.remove('active');
-            overlay.classList.remove('active');
-        }
+        buildBulkDownloadCheckboxes();
+        if (window.innerWidth <= 950) toggleSidebar();
     }
 
-    function renderAllItemsStockTable() {
-        const tbody = document.getElementById('all-items-tbody');
-        const emptyMsg = document.getElementById('all-items-empty-msg');
-        tbody.innerHTML = "";
-
+    function buildBulkDownloadCheckboxes() {
+        const container = document.getElementById('bulk-checkboxes-container');
+        container.innerHTML = "";
         const allKeys = Object.keys(itemsDbCloud);
 
-        if (allKeys.length === 0) {
-            emptyMsg.style.display = "block";
+        if(allKeys.length === 0) {
+            container.innerHTML = `<div class="empty-state">Belum ada data barang terdaftar.</div>`;
             return;
         }
-        emptyMsg.style.display = "none";
 
         allKeys.forEach(key => {
             const item = itemsDbCloud[key];
-            const itemUnit = item.unit ? ` ${item.unit}` : '';
-            let totalIn = 0;
-            let totalOut = 0;
-            let currentStock = item.initialStock;
-
-            if (item.mutations && item.mutations.length > 0) {
-                item.mutations.forEach(mut => {
-                    totalIn += (mut.in || 0);
-                    totalOut += (mut.out || 0);
+            if(item.qrCode) {
+                // Checkbox Utama Barang (Dus / Pcs)
+                container.innerHTML += `
+                    <div class="bulk-item-row">
+                        <input type="checkbox" class="qr-bulk-cb" data-type="MAIN" data-itemid="${item.id}" data-value="${item.qrCode}" data-label="${item.name} (${item.qrCode})" checked>
+                        <label>⭐ <strong>[UTAMA]</strong> ${item.name} &rarr; (QR: <code>${item.qrCode}</code>)</label>
+                    </div>`;
+            }
+            if(item.isParent && item.childQrs) {
+                // Checkbox Turunan Roll Satuan
+                item.childQrs.forEach((cQr, index) => {
+                    container.innerHTML += `
+                        <div class="bulk-item-row" style="padding-left: 25px; background: #fdfefe;">
+                            <input type="checkbox" class="qr-bulk-cb" data-type="CHILD" data-itemid="${item.id}" data-childindex="${index}" data-value="${cQr}" data-label="${item.name} - Roll ${index+1}" checked>
+                            <label>🧵 [Roll ${index+1}] Eceran &rarr; (QR: <code>${cQr}</code>)</label>
+                        </div>`;
                 });
+            }
+        });
+    }
+
+    function toggleSelectAllBulkCheckboxes(status) {
+        const checkboxes = document.querySelectorAll('.qr-bulk-cb');
+        checkboxes.forEach(cb => cb.checked = status);
+    }
+
+    async function processSelectedQRCodesToZip() {
+        const checkboxes = document.querySelectorAll('.qr-bulk-cb:checked');
+        if (checkboxes.length === 0) return alert("Pilih minimal satu item QR Code untuk didownload!");
+        
+        if (!confirm(`Unduh ${checkboxes.length} QR Code terpilih ke dalam file ZIP?`)) return;
+
+        const zip = new JSZip();
+        const tempContainer = document.getElementById('bulk-qr-generator-temp');
+        showCloudToast("⏳ Memproses pembuatan berkas ZIP...");
+
+        for (let cb of checkboxes) {
+            const type = cb.getAttribute('data-type');
+            const tokenValue = cb.getAttribute('data-value');
+            const fileLabelName = cb.getAttribute('data-label');
+
+            tempContainer.innerHTML = "";
+            new QRCode(tempContainer, { text: tokenValue, width: 300, height: 300 });
+            await new Promise(resolve => setTimeout(resolve, 80));
+
+            let labeledCanvas = await generateLabeledQRCanvas(tempContainer, fileLabelName);
+            if (labeledCanvas) {
+                let dataUrl = labeledCanvas.toDataURL("image/png");
+                let prefix = type === "MAIN" ? "QR_MAIN_" : "QR_ROLL_";
+                zip.file(`${prefix}${tokenValue}.png`, dataUrl.replace('data:image/png;base64,', ''), {base64: true});
+            }
+        }
+
+        zip.generateAsync({type: "blob"}).then(function(content) {
+            const downloadLink = document.createElement('a');
+            downloadLink.href = URL.createObjectURL(content);
+            downloadLink.download = `SELEKSI_QR_CODE_GUDANG.zip`;
+            document.body.appendChild(downloadLink); 
+            downloadLink.click(); 
+            document.body.removeChild(downloadLink);
+            showCloudToast("📥 ZIP Berhasil Terunduh!");
+        });
+    }
+
+    function showAllItemsStockView() {
+        currentViewMode = "all_items"; activeItemId = ""; document.getElementById('select-item').value = ""; 
+        document.getElementById('welcome-screen-view').style.display = "none";
+        document.getElementById('main-dashboard-view').style.display = "none";
+        document.getElementById('bulk-download-selection-view').style.display = "none";
+        document.getElementById('all-items-stock-view').style.display = "block";
+        document.getElementById('search-item-input').value = "";
+        renderAllItemsStockTable();
+        if (window.innerWidth <= 950) toggleSidebar();
+    }
+
+    function renderAllItemsStockTable() {
+        const tbody = document.getElementById('all-items-tbody'); const emptyMsg = document.getElementById('all-items-empty-msg');
+        tbody.innerHTML = ""; const allKeys = Object.keys(itemsDbCloud);
+        if (allKeys.length === 0) { emptyMsg.style.display = "block"; return; }
+        emptyMsg.style.display = "none";
+
+        allKeys.forEach(key => {
+            const item = itemsDbCloud[key]; const itemUnit = item.unit ? ` ${item.unit}` : '';
+            let totalIn = 0, totalOut = 0, currentStock = item.initialStock;
+            if (item.mutations && item.mutations.length > 0) {
+                item.mutations.forEach(mut => { totalIn += (mut.in || 0); totalOut += (mut.out || 0); });
                 currentStock = item.mutations[item.mutations.length - 1].stockAkhir;
             }
-
-            let tr = document.createElement('tr');
-            tr.style.cursor = "pointer";
-            
-            tr.setAttribute('data-item-name', item.name.toUpperCase());
-            tr.setAttribute('data-item-qr', (item.qrCode || '').toUpperCase());
-
-            tr.onclick = function() {
-                activeItemId = item.id;
-                currentViewMode = "dashboard";
-                document.getElementById('all-items-stock-view').style.display = "none";
-                renderItemsDropdown();
-                loadBinCard();
-            };
-
+            let tr = document.createElement('tr'); tr.style.cursor = "pointer";
+            tr.setAttribute('data-item-name', item.name.toUpperCase()); tr.setAttribute('data-item-qr', (item.qrCode || '').toUpperCase());
+            tr.onclick = function() { activeItemId = item.id; currentViewMode = "dashboard"; document.getElementById('all-items-stock-view').style.display = "none"; renderItemsDropdown(); loadBinCard(); };
             tr.innerHTML = `
-                <td><strong>${item.name}</strong></td>
+                <td><strong>${item.name}</strong> ${item.isParent ? (item.brokenPack ? '<span style="color:#e67e22; font-size:10px;">[Broken Pack]</span>':'<span style="color:#2ecc71; font-size:10px;">[Full]</span>'):''}</td>
                 <td class="center">${item.initialStock}${itemUnit}</td>
                 <td class="center" style="color:#2ecc71; font-weight:600;">+${totalIn}</td>
                 <td class="center" style="color:#e74c3c; font-weight:600;">-${totalOut}</td>
@@ -898,165 +1110,50 @@
             `;
             tbody.appendChild(tr);
         });
-
         filterAllItemsTable();
     }
 
     function filterAllItemsTable() {
-        const input = document.getElementById('search-item-input');
-        const filter = input.value.toUpperCase();
-        const table = document.getElementById('all-items-table');
-        const tr = table.getElementsByTagName('tr');
-        const emptyMsg = document.getElementById('all-items-empty-msg');
-        let visibleCount = 0;
-
+        const input = document.getElementById('search-item-input'); const filter = input.value.toUpperCase();
+        const tr = document.getElementById('all-items-table').getElementsByTagName('tr');
+        const emptyMsg = document.getElementById('all-items-empty-msg'); let visibleCount = 0;
         for (let i = 1; i < tr.length; i++) {
-            const nameText = tr[i].getAttribute('data-item-name') || '';
-            const qrText = tr[i].getAttribute('data-item-qr') || '';
-            
-            if (nameText.indexOf(filter) > -1 || qrText.indexOf(filter) > -1) {
-                tr[i].style.display = "";
-                visibleCount++;
-            } else {
-                tr[i].style.display = "none";
-            }
+            if ((tr[i].getAttribute('data-item-name') || '').indexOf(filter) > -1 || (tr[i].getAttribute('data-item-qr') || '').indexOf(filter) > -1) { tr[i].style.display = ""; visibleCount++; } 
+            else { tr[i].style.display = "none"; }
         }
-
-        if (visibleCount === 0 && tr.length > 1) {
-            emptyMsg.textContent = "Barang yang Anda cari tidak ditemukan.";
-            emptyMsg.style.display = "block";
-        } else if (tr.length <= 1) {
-            emptyMsg.textContent = "Tidak ada data barang terdaftar.";
-            emptyMsg.style.display = "block";
-        } else {
-            emptyMsg.style.display = "none";
-        }
-    }
-
-    function openModernModal(icon, title, desc, defaultValue, submitCallback) {
-        document.getElementById('modal-icon-view').textContent = icon;
-        document.getElementById('modal-title-view').textContent = title;
-        document.getElementById('modal-desc-view').textContent = desc;
-        const inputField = document.getElementById('modal-text-input');
-        inputField.value = defaultValue;
-        document.getElementById('modern-input-modal').classList.add('active');
-        setTimeout(() => inputField.focus(), 50);
-        currentModalCallback = submitCallback;
-        document.getElementById('modal-submit-btn').onclick = function() {
-            if(currentModalCallback) currentModalCallback(inputField.value.trim());
-        };
-    }
-    function closeModernModal() { document.getElementById('modern-input-modal').classList.remove('active'); }
-
-    function triggerEditQRModal() {
-        const itemId = activeItemId; if (!itemId) return alert("Pilih barang di Menu 1 terlebih dahulu!");
-        openModernModal("✏️", "Ubah QR", "Masukkan QR Baru:", itemsDbCloud[itemId].qrCode || "", function(value) {
-            if (!value) return;
-            database.ref('items_db/' + itemId + '/qrCode').set(value.toUpperCase())
-                .then(() => { showCloudToast("✏️ Kode QR Berhasil Diubah!"); closeModernModal(); })
-                .catch(err => alert(err.message));
-        });
+        emptyMsg.style.display = (visibleCount === 0) ? "block" : "none";
     }
 
     function generateLabeledQRCanvas(sourceElement, itemName) {
         return new Promise((resolve) => {
             const originCanvas = sourceElement.querySelector('canvas');
             const originImg = sourceElement.querySelector('img');
-            
             const processContext = (srcImgOrCanvas) => {
-                const qrSize = 300; 
-                const padding = 20;
-                const textSpace = 50; 
-                
+                const qrSize = 300, padding = 20, textSpace = 50;
                 const outputCanvas = document.createElement('canvas');
-                outputCanvas.width = qrSize + (padding * 2);
-                outputCanvas.height = qrSize + (padding * 2) + textSpace;
-                
+                outputCanvas.width = qrSize + (padding * 2); outputCanvas.height = qrSize + (padding * 2) + textSpace;
                 const ctx = outputCanvas.getContext('2d');
-                
-                ctx.fillStyle = "#ffffff";
-                ctx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
-                
+                ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
                 ctx.drawImage(srcImgOrCanvas, padding, padding, qrSize, qrSize);
-                
-                ctx.fillStyle = "#000000";
-                ctx.font = "bold 16px 'Segoe UI', Arial, sans-serif";
-                ctx.textAlign = "center";
-                let textY = qrSize + padding + 25;
-                ctx.fillText(itemName, outputCanvas.width / 2, textY);
-                
-                ctx.strokeStyle = "#000000";
-                ctx.lineWidth = 3; 
-                ctx.strokeRect(0, 0, outputCanvas.width, outputCanvas.height);
-                
+                ctx.fillStyle = "#000000"; ctx.font = "bold 15px 'Segoe UI', Arial, sans-serif"; ctx.textAlign = "center";
+                ctx.fillText(itemName, outputCanvas.width / 2, qrSize + padding + 25);
+                ctx.strokeStyle = "#000000"; ctx.lineWidth = 3; ctx.strokeRect(0, 0, outputCanvas.width, outputCanvas.height);
                 resolve(outputCanvas);
             };
-
             if (originImg && originImg.src && originImg.src.startsWith('data:image')) {
-                const img = new Image();
-                img.onload = function() { processContext(img); };
-                img.src = originImg.src;
-            } else if (originCanvas) {
-                processContext(originCanvas);
-            } else {
-                resolve(null);
-            }
+                const img = new Image(); img.onload = function() { processContext(img); }; img.src = originImg.src;
+            } else if (originCanvas) { processContext(originCanvas); } else { resolve(null); }
         });
     }
 
     async function downloadQRCode() {
-        const itemId = activeItemId; 
-        if (!itemId || !itemsDbCloud[itemId]) return alert("Pilih barang terlebih dahulu!");
-        
-        const qrContainer = document.getElementById('qrcode-output');
-        const itemName = itemsDbCloud[itemId].name;
-        const filename = `QR_${itemsDbCloud[itemId].qrCode}_${itemName.replace(/[^a-z0-9]/gi, '_')}.png`;
-        
+        const itemId = activeItemId; if (!itemId || !itemsDbCloud[itemId]) return;
+        const qrContainer = document.getElementById('qrcode-output'); const itemName = itemsDbCloud[itemId].name;
         const labeledCanvas = await generateLabeledQRCanvas(qrContainer, itemName);
-        
         if (labeledCanvas) {
-            const a = document.createElement('a');
-            a.href = labeledCanvas.toDataURL("image/png");
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        } else {
-            alert("Gambar QR Code belum siap atau gagal dimuat. Silakan coba klik ulang barang.");
+            const a = document.createElement('a'); a.href = labeledCanvas.toDataURL("image/png");
+            a.download = `QR_${itemsDbCloud[itemId].qrCode}.png`; document.body.appendChild(a); a.click(); document.body.removeChild(a);
         }
-    }
-
-    async function downloadAllQRCodesAsZip() {
-        const itemKeys = Object.keys(itemsDbCloud);
-        const validItems = itemKeys.filter(key => itemsDbCloud[key].qrCode);
-        if (validItems.length === 0) return alert("Belum ada data barang!");
-        if (!confirm(`Unduh ${validItems.length} QR Code beserta label & border luar ke ZIP?`)) return;
-        
-        const zip = new JSZip();
-        const tempContainer = document.getElementById('bulk-qr-generator-temp');
-        
-        for (let key of validItems) {
-            const item = itemsDbCloud[key];
-            tempContainer.innerHTML = "";
-            new QRCode(tempContainer, { text: item.qrCode, width: 300, height: 300 });
-            
-            await new Promise(resolve => setTimeout(resolve, 80));
-            
-            const labeledCanvas = await generateLabeledQRCanvas(tempContainer, item.name);
-            if (labeledCanvas) {
-                const dataUrl = labeledCanvas.toDataURL("image/png");
-                zip.file(`QR_${item.qrCode}_${item.name.replace(/[^a-z0-9]/gi, '_')}.png`, dataUrl.replace('data:image/png;base64,', ''), {base64: true});
-            }
-        }
-        
-        zip.generateAsync({type: "blob"}).then(function(content) {
-            const downloadLink = document.createElement('a');
-            downloadLink.href = URL.createObjectURL(content);
-            downloadLink.download = `QR_CODES_BORDER_LABELED.zip`;
-            document.body.appendChild(downloadLink); 
-            downloadLink.click(); 
-            document.body.removeChild(downloadLink);
-        });
     }
 
     function startScanner() {
@@ -1070,21 +1167,19 @@
     }
     
     function onScanSuccess(decodedText) {
-        stopScanner(); 
-        let token = decodedText.trim().toUpperCase(); 
-        let foundId = null;
-        Object.keys(itemsDbCloud).forEach(key => { if(itemsDbCloud[key].qrCode === token) foundId = itemsDbCloud[key].id; });
-        
+        stopScanner(); let token = decodedText.trim().toUpperCase(); let foundId = null; let isChildScan = false;
+        Object.keys(itemsDbCloud).forEach(key => { 
+            let item = itemsDbCloud[key];
+            if(item.qrCode === token) { foundId = item.id; isChildScan = false; } 
+            else if(item.isParent && item.childQrs && item.childQrs.includes(token)) { foundId = item.id; isChildScan = true; }
+        });
         if (foundId) { 
-            currentViewMode = "dashboard";
-            document.getElementById('all-items-stock-view').style.display = "none";
-            activeItemId = foundId; 
-            renderItemsDropdown(); 
-            loadBinCard(); 
-            setTimeout(() => { openQrMutationPopup(foundId); }, 350);
-        } else { 
-            alert("QR Code Tidak Terdaftar di Cloud!"); 
-        }
+            currentViewMode = "dashboard"; document.getElementById('all-items-stock-view').style.display = "none";
+            document.getElementById('bulk-download-selection-view').style.display = "none";
+            activeItemId = foundId; renderItemsDropdown(); loadBinCard(); 
+            if(isChildScan && itemsDbCloud[foundId].brokenPack === false) showCloudToast("⚠️ Peringatan: Dus Utama dibuka karena Roll Eceran diambil!");
+            setTimeout(() => { openQrMutationPopup(foundId, isChildScan, token); }, 350);
+        } else { alert("QR Code Tidak Terdaftar di Cloud!"); }
     }
 </script>
 </body>
