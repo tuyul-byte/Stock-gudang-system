@@ -193,7 +193,7 @@
         .stat-card .value { font-size: 20px; font-weight: 700; color: var(--primary); margin-top: 3px; }
         .stat-card .label { font-size: 11px; color: var(--gray); text-transform: uppercase; font-weight: 600; }
 
-        /* TABLE */
+        /* TABLE CONTAINER */
         .table-responsive { width: 100%; overflow-x: auto; background: var(--white); border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.01); }
         table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 700px; }
         th { background-color: var(--primary); color: var(--white); text-align: left; padding: 12px 10px; font-weight: 600; }
@@ -202,6 +202,10 @@
         td { padding: 12px 10px; border-bottom: 1px solid #edf2f7; }
         tr:nth-child(even) td { background-color: #fcfdfe; }
         tr:hover td { background-color: #f1f5f9; }
+
+        /* KUSTOMISASI KHUSUS TABEL RIWAYAT SEMUA BARANG (PENGECILAN OPTIMAL) */
+        #all-items-table { font-size: 11.5px; width: 100%; min-width: 100%; table-layout: fixed; }
+        #all-items-table th, #all-items-table td { padding: 6px 8px; word-wrap: break-word; }
 
         .badge { display: inline-block; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; }
         .badge-in { background-color: rgba(46, 204, 113, 0.15); color: #27ae60; }
@@ -347,7 +351,7 @@
                     </div>
                     <div class="form-group">
                         <label>Kuantitas Masuk (Qty)</label>
-                        <input type="number" id="mutation-qty" class="form-control" min="1" value="1">
+                        <input type="number" id="mutation-qty" class="form-control" min="" value="">
                     </div>
                     <div class="form-group">
                         <label>Tanggal Masuk</label>
@@ -379,6 +383,7 @@
                                 <option value="pcs">Pcs</option>
                                 <option value="kg">Kg</option>
                                 <option value="pack">Pack</option>
+                                <option value="roll">Roll</option>
                                 <option value="MANUAL">Ketik Manual...</option>
                             </select>
                             <input type="text" id="new-item-unit-manual" class="form-control" placeholder="Ketik unit baru (cth: Dus, Roll)" style="display: none;">
@@ -391,7 +396,7 @@
                     </div>
                     <div class="form-group">
                         <label>Stock Awal</label>
-                        <input type="number" id="initial-stock" class="form-control" value="0" min="0">
+                        <input type="number" id="initial-stock" class="form-control" value="" min="">
                     </div>
                     <button class="btn btn-primary" onclick="addNewItem()">Simpan Barang Baru</button>
                 </div>
@@ -487,13 +492,11 @@
                     <table id="all-items-table">
                         <thead>
                             <tr>
-                                <th style="width: 15%;">Kode Barang</th>
-                                <th style="width: 25%;">Nama Barang</th>
-                                <th style="width: 15%;">Kode QR</th>
+                                <th style="width: 30%;">Nama Barang</th>
                                 <th class="center" style="width: 12%;">Stok Awal</th>
                                 <th class="center" style="width: 12%;">Total IN</th>
                                 <th class="center" style="width: 12%;">Total OUT</th>
-                                <th class="right" style="width: 14%;">Stok Akhir</th>
+                                <th class="right" style="width: 12%;">Stok Akhir</th>
                             </tr>
                         </thead>
                         <tbody id="all-items-tbody"></tbody>
@@ -874,6 +877,10 @@
 
             let tr = document.createElement('tr');
             tr.style.cursor = "pointer";
+            
+            tr.setAttribute('data-item-name', item.name.toUpperCase());
+            tr.setAttribute('data-item-qr', (item.qrCode || '').toUpperCase());
+
             tr.onclick = function() {
                 activeItemId = item.id;
                 currentViewMode = "dashboard";
@@ -883,13 +890,11 @@
             };
 
             tr.innerHTML = `
-                <td><strong style="color:var(--accent);">${item.id}</strong></td>
                 <td><strong>${item.name}</strong></td>
-                <td><code style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-weight:bold;">${item.qrCode || '-'}</code></td>
                 <td class="center">${item.initialStock}${itemUnit}</td>
                 <td class="center" style="color:#2ecc71; font-weight:600;">+${totalIn}</td>
                 <td class="center" style="color:#e74c3c; font-weight:600;">-${totalOut}</td>
-                <td class="right" style="font-weight:bold; color:var(--secondary); font-size:14px;">${currentStock}${itemUnit}</td>
+                <td class="right" style="font-weight:bold; color:var(--secondary); font-size:12.5px;">${currentStock}${itemUnit}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -906,19 +911,14 @@
         let visibleCount = 0;
 
         for (let i = 1; i < tr.length; i++) {
-            const tdName = tr[i].getElementsByTagName('td')[1]; 
-            const tdQr = tr[i].getElementsByTagName('td')[2];   
+            const nameText = tr[i].getAttribute('data-item-name') || '';
+            const qrText = tr[i].getAttribute('data-item-qr') || '';
             
-            if (tdName || tdQr) {
-                const nameText = tdName.textContent || tdName.innerText;
-                const qrText = tdQr.textContent || tdQr.innerText;
-                
-                if (nameText.toUpperCase().indexOf(filter) > -1 || qrText.toUpperCase().indexOf(filter) > -1) {
-                    tr[i].style.display = "";
-                    visibleCount++;
-                } else {
-                    tr[i].style.display = "none";
-                }
+            if (nameText.indexOf(filter) > -1 || qrText.indexOf(filter) > -1) {
+                tr[i].style.display = "";
+                visibleCount++;
+            } else {
+                tr[i].style.display = "none";
             }
         }
 
@@ -958,7 +958,6 @@
         });
     }
 
-    // FUNGSI UTILITY UNTUK MENAMBAHKAN NAMA BARANG DAN BORDER HITAM PADA CANVAS QR
     function generateLabeledQRCanvas(sourceElement, itemName) {
         return new Promise((resolve) => {
             const originCanvas = sourceElement.querySelector('canvas');
@@ -975,23 +974,19 @@
                 
                 const ctx = outputCanvas.getContext('2d');
                 
-                // 1. Gambar background putih penuh
                 ctx.fillStyle = "#ffffff";
                 ctx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
                 
-                // 2. Gambar matriks utama QR Code
                 ctx.drawImage(srcImgOrCanvas, padding, padding, qrSize, qrSize);
                 
-                // 3. Tambahkan teks nama barang tepat di bawah QR
                 ctx.fillStyle = "#000000";
                 ctx.font = "bold 16px 'Segoe UI', Arial, sans-serif";
                 ctx.textAlign = "center";
                 let textY = qrSize + padding + 25;
                 ctx.fillText(itemName, outputCanvas.width / 2, textY);
                 
-                // 4. Tambahkan garis bingkai (Border) hitam pekat di bagian paling luar gambar
                 ctx.strokeStyle = "#000000";
-                ctx.lineWidth = 3; // Ketebalan border luar (pixel)
+                ctx.lineWidth = 3; 
                 ctx.strokeRect(0, 0, outputCanvas.width, outputCanvas.height);
                 
                 resolve(outputCanvas);
@@ -1009,7 +1004,6 @@
         });
     }
 
-    // FUNGSI UNDUH SATUAN DENGAN INTEGRASI LABEL NAMA BARANG + BORDER
     async function downloadQRCode() {
         const itemId = activeItemId; 
         if (!itemId || !itemsDbCloud[itemId]) return alert("Pilih barang terlebih dahulu!");
@@ -1032,7 +1026,6 @@
         }
     }
 
-    // FUNGSI UNDUH BULK ZIP DENGAN INTEGRASI LABEL NAMA BARANG + BORDER
     async function downloadAllQRCodesAsZip() {
         const itemKeys = Object.keys(itemsDbCloud);
         const validItems = itemKeys.filter(key => itemsDbCloud[key].qrCode);
